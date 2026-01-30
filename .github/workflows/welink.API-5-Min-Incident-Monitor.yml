@@ -16,13 +16,15 @@ jobs:
     steps:
       - name: Check API Status & Update Status Page
         env:
-          INCIDENT_IO_API_KEY: ${{ secrets.INCIDENT_IO_API_KEY }}
+          API_BASE: ${{ secrets.API_BASE }}
+          INCIDENT_API_KEY: ${{ secrets.INCIDENT_API_KEY }}
+          INCIDENT_BEARER: ${{ secrets.INCIDENT_BEARER }}
           STATUS_PAGE_ID: ${{ secrets.STATUS_PAGE_ID }}
           COMPONENT_ID: ${{ secrets.COMPONENT_ID }}
         run: |
           # 1. Ping your API
           # Using --max-time 10 to ensure we catch 'hanging' states
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://api.welinked.ai)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${API_BASE}")
           
           echo "Current Status: $STATUS"
 
@@ -33,9 +35,9 @@ jobs:
             
             # Fire alert
             curl --location 'https://api.incident.io/v2/alert_events/http/01KFJGZTYQSFHQFVNJSSCZ14A0' \
-            --header 'api-key: U2Fs!dGVkX1@9KQ0lV?b1pLdW9rR3hjMm5zdEJvZnNt=T25oYy9iMWR6' \
+            --header "api-key: ${INCIDENT_API_KEY}" \
             --header 'Content-Type: application/json' \
-            --header 'Authorization: Bearer 844cc2e9872de604630a8c75d8e7397ff2cc23417ec234bdbd74c2dd003e71d5' \
+            --header "Authorization: Bearer ${INCIDENT_BEARER}" \
             --data "{
               \"title\": \"API-DOWN\",
               \"description\": \"API_DOWN_AT: $(date -u '+%Y-%m-%d %H:%M:%S') UTC\",
@@ -52,7 +54,7 @@ jobs:
             echo "Updating status page to MAJOR OUTAGE..."
             curl --location "https://api.incident.io/v1/status_pages/${STATUS_PAGE_ID}/components/${COMPONENT_ID}" \
             --request PATCH \
-            --header "Authorization: Bearer ${INCIDENT_IO_API_KEY}" \
+            --header "Authorization: Bearer ${INCIDENT_BEARER}" \
             --header 'Content-Type: application/json' \
             --data "{
               \"status\": \"major_outage\",
