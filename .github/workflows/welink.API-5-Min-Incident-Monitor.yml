@@ -1,0 +1,73 @@
+name: API 5-Min Incident Monitor
+# Triggered by scheduler.yml every 15 minutes or manually via workflow_dispatch
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Automatically trigger every 15 minutes
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API Status & Update Status Page
+        env:
+          INCIDENT_IO_API_KEY: ${{ secrets.INCIDENT_IO_API_KEY }}
+          STATUS_PAGE_ID: ${{ secrets.STATUS_PAGE_ID }}
+          COMPONENT_ID: ${{ secrets.COMPONENT_ID }}
+        run: |
+          # 1. Ping your API
+          # Using --max-time 10 to ensure we catch 'hanging' states
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://api.welinked.ai)
+          
+          echo "Current Status: $STATUS"
+
+          # 2. If status is NOT 200, fire the incident.io alert and update status page
+          if [ "$STATUS" -ne 200 ]; then
+          #if [ "$STATUS" -eq 200 ]; then
+            echo "API Abnormal ($STATUS). Firing incident.io alert..."
+            
+            # Fire alert
+            curl --location 'https://api.incident.io/v2/alert_events/http/01KFJGZTYQSFHQFVNJSSCZ14A0' \
+            --header 'api-key: U2Fs!dGVkX1@9KQ0lV?b1pLdW9rR3hjMm5zdEJvZnNt=T25oYy9iMWR6' \
+            --header 'Content-Type: application/json' \
+            --header 'Authorization: Bearer 844cc2e9872de604630a8c75d8e7397ff2cc23417ec234bdbd74c2dd003e71d5' \
+            --data "{
+              \"title\": \"API-DOWN\",
+              \"description\": \"API_DOWN_AT: $(date -u '+%Y-%m-%d %H:%M:%S') UTC\",
+              \"deduplication_key\": \"api-welinked-down\",
+              \"status\": \"firing\",
+              \"metadata\": {
+                \"team\": \"core\",
+                \"service\": \"api\",
+                \"http_status\": \"$STATUS\"
+              }
+            }"
+            
+            # Update status page to major_outage
+            echo "Updating status page to MAJOR OUTAGE..."
+            curl --location "https://api.incident.io/v1/status_pages/${STATUS_PAGE_ID}/components/${COMPONENT_ID}" \
+            --request PATCH \
+            --header "Authorization: Bearer ${INCIDENT_IO_API_KEY}" \
+            --header 'Content-Type: application/json' \
+            --data "{
+              \"status\": \"major_outage\",
+              \"message\": \"API is currently unavailable (HTTP $STATUS). We are investigating.\"
+            }"
+          #else
+            # echo "API is healthy. Updating status page to OPERATIONAL..."
+            
+            # # Update status page to operational
+            # curl --location "https://api.incident.io/v1/status_pages/${STATUS_PAGE_ID}/components/${COMPONENT_ID}" \
+            # --request PATCH \
+            # --header "Authorization: Bearer ${INCIDENT_IO_API_KEY}" \
+            # --header 'Content-Type: application/json' \
+            # --data "{
+            #   \"status\": \"operational\",
+            #   \"message\": \"All systems operational\"
+            # }"
+          fi
