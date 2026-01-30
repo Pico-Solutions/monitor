@@ -1,9 +1,9 @@
 name: API 5-Min Incident Monitor
-# Triggered by scheduler.yml every 15 minutes or manually via workflow_dispatch
+# Triggered by scheduler.yml every 5 minutes or manually via workflow_dispatch
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Automatically trigger every 15 minutes
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -34,7 +34,7 @@ jobs:
             echo "API Abnormal ($STATUS). Firing incident.io alert..."
             
             # Fire alert
-            curl --location 'https://api.incident.io/v2/alert_events/http/01KFJGZTYQSFHQFVNJSSCZ14A0' \
+            curl -s --location 'https://api.incident.io/v2/alert_events/http/01KFJGZTYQSFHQFVNJSSCZ14A0' \
             --header "api-key: ${INCIDENT_API_KEY}" \
             --header 'Content-Type: application/json' \
             --header "Authorization: Bearer ${INCIDENT_BEARER}" \
@@ -52,7 +52,7 @@ jobs:
             
             # Update status page to major_outage
             echo "Updating status page to MAJOR OUTAGE..."
-            curl --location "https://api.incident.io/v1/status_pages/${STATUS_PAGE_ID}/components/${COMPONENT_ID}" \
+            curl -s --location "https://api.incident.io/v1/status_pages/${STATUS_PAGE_ID}/components/${COMPONENT_ID}" \
             --request PATCH \
             --header "Authorization: Bearer ${INCIDENT_BEARER}" \
             --header 'Content-Type: application/json' \
@@ -64,7 +64,7 @@ jobs:
             # echo "API is healthy. Updating status page to OPERATIONAL..."
             
             # # Update status page to operational
-            # curl --location "https://api.incident.io/v1/status_pages/${STATUS_PAGE_ID}/components/${COMPONENT_ID}" \
+            # curl -s --location "https://api.incident.io/v1/status_pages/${STATUS_PAGE_ID}/components/${COMPONENT_ID}" \
             # --request PATCH \
             # --header "Authorization: Bearer ${INCIDENT_IO_API_KEY}" \
             # --header 'Content-Type: application/json' \
